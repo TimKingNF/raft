@@ -17,21 +17,25 @@ type WithRPCHeader interface {
 
 // AppendEntriesRequest is the command used to append entries to the
 // replicated log.
+// 日志复制RPC，实现 WithRPCHeader 接口
 type AppendEntriesRequest struct {
 	RPCHeader
 
 	// Provide the current term and leader
 	Term   uint64
-	Leader []byte
+	Leader []byte  // 记录 Leader 信息（包括服务器ID和地址信息）
 
 	// Provide the previous entries for integrity checking
-	PrevLogEntry uint64
-	PrevLogTerm  uint64
+	// 这两个值用于和其他节点进行比较，在复制日志的时候进行核对，是否需要执行反熵操作
+	PrevLogEntry uint64  // 表示当前要复制的日志项，前面一条日志项的索引值
+	PrevLogTerm  uint64  // 表示当前要复制的日志项，前面一条日志项的任期编号
 
 	// New entries to commit
-	Entries []*Log
+	Entries []*Log  // 新日志项。
 
 	// Commit index on the leader
+	// 领导者节点上的已提交的日志项的最大索引值
+	// 可以让 follower 提交当前小于该值、并且尚未提到到 状态机FSM 的日志
 	LeaderCommitIndex uint64
 }
 

@@ -69,7 +69,9 @@ var (
 )
 
 // Raft implements a Raft node.
+// Raft 就是 Raft 算法当中的一个成员
 type Raft struct {
+	// 定义了 Raft Node 的一系列状态信息
 	raftState
 
 	// protocolVersion is used to inter-operate with Raft servers running
@@ -422,7 +424,22 @@ func HasExistingState(logs LogStore, stable StableStore, snaps SnapshotStore) (b
 // as implementations of various interfaces that are required. If we have any
 // old state, such as snapshots, logs, peers, etc, all those will be restored
 // when creating the Raft node.
-func NewRaft(conf *Config, fsm FSM, logs LogStore, stable StableStore, snaps SnapshotStore, trans Transport) (*Raft, error) {
+// 创建 Raft 节点
+func NewRaft(conf *Config,  // 节点配置信息
+	fsm FSM,  // 有限状态机
+	logs LogStore,  // 用来存储日志, 可以使用 raft-boltdb，也可以自己实现
+	stable StableStore,  // 稳定存储，用来存储 Raft 集群的节点信息
+	snaps SnapshotStore,  // 快照存储，用来存储节点的快照信息( 压缩之后的日志信息 )
+												// Hashicorp Raft 默认提供了3种:
+												// * DiscardSnapshotStore（不存储，忽略快照，相当于 /dev/null，一般来说用于测
+//试
+												// * FileSnapshotStore（文件持久化存储）
+												// * InmemSnapshotStore（内存存储，不持久化，重启程序后，数据会丢失）
+	trans Transport,  // Raft 节点间的通信通道
+										// Hashicorp Raft 默认提供了2种:
+										// * 基于 TCP 协议的 TCPTransport，可以跨机器跨网络通信
+										// * 基于内存的 InmemTransport，不走网络，在内存里面通过 Channel 来通信，适合单机
+) (*Raft, error) {
 	// Validate the configuration.
 	if err := ValidateConfig(conf); err != nil {
 		return nil, err
@@ -621,6 +638,7 @@ func (r *Raft) restoreSnapshot() error {
 // One sane approach is to bootstrap a single server with a configuration
 // listing just itself as a Voter, then invoke AddVoter() on it to add other
 // servers to the cluster.
+// 第一个节点通过 bootstrap 的方式启动，它启动后自动成为 Leader
 func (r *Raft) BootstrapCluster(configuration Configuration) Future {
 	bootstrapReq := &bootstrapFuture{}
 	bootstrapReq.init()
@@ -628,7 +646,7 @@ func (r *Raft) BootstrapCluster(configuration Configuration) Future {
 	select {
 	case <-r.shutdownCh:
 		return errorFuture{ErrRaftShutdown}
-	case r.bootstrapCh <- bootstrapReq:
+	case r.bootstrapCh <- bootstrapReq:  // 发送 bootstrap 信号启动集群
 		return bootstrapReq
 	}
 }
@@ -781,7 +799,12 @@ func (r *Raft) RemovePeer(peer ServerAddress) Future {
 // another configuration entry has been added in the meantime, this request will
 // fail. If nonzero, timeout is how long this server should wait before the
 // configuration change log entry is appended.
-func (r *Raft) AddVoter(id ServerID, address ServerAddress, prevIndex uint64, timeout time.Duration) IndexFuture {
+// 将节点加入到集群中
+func (r *Raft) AddVoter(id ServerID,  // 服务器ID信息
+	address ServerAddress,  // 服务器地址信息
+	prevIndex uint64,  // 前一个集群配置的索引值，一般使用默认值 0
+	timeout time.Duration,  // 在完成集群配置的日志项添加前，最长等待多久，一般设置为 0，使用默认值
+) IndexFuture {
 	if r.protocolVersion < 2 {
 		return errorFuture{ErrUnsupportedProtocol}
 	}
@@ -799,6 +822,7 @@ func (r *Raft) AddVoter(id ServerID, address ServerAddress, prevIndex uint64, ti
 // elections or log entry commitment. If the server is already in the cluster,
 // this updates the server's address. This must be run on the leader or it will
 // fail. For prevIndex and timeout, see AddVoter.
+// 将节点加入到集群中，但不赋予投票权
 func (r *Raft) AddNonvoter(id ServerID, address ServerAddress, prevIndex uint64, timeout time.Duration) IndexFuture {
 	if r.protocolVersion < 3 {
 		return errorFuture{ErrUnsupportedProtocol}
@@ -815,7 +839,11 @@ func (r *Raft) AddNonvoter(id ServerID, address ServerAddress, prevIndex uint64,
 // RemoveServer will remove the given server from the cluster. If the current
 // leader is being removed, it will cause a new election to occur. This must be
 // run on the leader or it will fail. For prevIndex and timeout, see AddVoter.
-func (r *Raft) RemoveServer(id ServerID, prevIndex uint64, timeout time.Duration) IndexFuture {
+// 移除服务器，必须在 leader 节点上执行
+func (r *Raft) RemoveServer(id ServerID,  // 服务器id信息
+	prevIndex uint64,  // 前一个集群配置的索引值，一般设置为 0，使用默认值
+	timeout time.Duration,  // 在完成集群配置的日志项添加前，最长等待多久，一般设置为 0，使用默认值
+) IndexFuture {
 	if r.protocolVersion < 2 {
 		return errorFuture{ErrUnsupportedProtocol}
 	}

@@ -133,7 +133,11 @@ func (r *Raft) replicate(s *followerReplication) {
 	// Start an async heartbeating routing
 	stopHeartbeat := make(chan struct{})
 	defer close(stopHeartbeat)
-	r.goFunc(func() { r.heartbeat(s, stopHeartbeat) })
+	r.goFunc(func() { r.heartbeat(s, stopHeartbeat) })  // 再启动一个协程，执行到 Follower 的心跳功能
+
+	// 这里流水线复制模式和 RPC 复制模式的区别在于
+	// 在不需要进行日志一致性检测，复制功能已正常运行的时候，开启了流水线复制模式，
+	// 目标是在环境正常的情况下，提升日志复制性能。如果流水线复制出错，则重新进行 RPC 复制模式
 
 RPC:
 	shouldStop := false
@@ -167,6 +171,7 @@ RPC:
 		}
 
 		// If things looks healthy, switch to pipeline mode
+		// 开启流水线复制模式
 		if !shouldStop && s.allowPipeline {
 			goto PIPELINE
 		}
@@ -222,6 +227,8 @@ START:
 	appendStats(string(s.peer.ID), start, float32(len(req.Entries)))
 
 	// Check for a newer term, stop running
+	// 日志一致性检查, 发现 follower 的任期比自己还大，说明存在问题，停止复制。
+	// leader 会强制让 follower 和自己保持一致
 	if resp.Term > req.Term {
 		r.handleStaleTerm(s)
 		return true
@@ -232,12 +239,13 @@ START:
 
 	// Update s based on success
 	if resp.Success {
+		// 日志复制成功
 		// Update our replication state
 		updateLastAppended(s, &req)
 
 		// Clear any failures, allow pipelining
 		s.failures = 0
-		s.allowPipeline = true
+		s.allowPipeline = true  // 开启流水线复制
 	} else {
 		atomic.StoreUint64(&s.nextIndex, max(min(s.nextIndex-1, resp.LastLog+1), 1))
 		if resp.NoRetryBackoff {

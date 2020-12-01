@@ -30,6 +30,7 @@ const (
 	// LogConfiguration establishes a membership change configuration. It is
 	// created when a server is added, removed, promoted, etc. Only used
 	// when protocol version 1 or greater is in use.
+	// 标示成员变更的日志项
 	LogConfiguration
 )
 
@@ -37,16 +38,16 @@ const (
 // and form the heart of the replicated state machine.
 type Log struct {
 	// Index holds the index of the log entry.
-	Index uint64
+	Index uint64  // 日志的索引值
 
 	// Term holds the election term of the log entry.
-	Term uint64
+	Term uint64  // 任期
 
 	// Type holds the type of the log entry.
-	Type LogType
+	Type LogType  // 日志类型
 
 	// Data holds the log entry's type-specific data.
-	Data []byte
+	Data []byte  // 指令
 
 	// Extensions holds an opaque byte slice of information for middleware. It
 	// is up to the client of the library to properly modify this as it adds
@@ -61,7 +62,7 @@ type Log struct {
 	// upgraded, but a leader changeover during this process could lead to
 	// trouble, so gating extension behavior via some flag in the client
 	// program is also a good idea.
-	Extensions []byte
+	Extensions []byte  // 扩展信息
 }
 
 // LogStore is used to provide an interface for storing

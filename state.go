@@ -47,18 +47,22 @@ type raftState struct {
 	// atomic ops on 32 bit platforms.
 
 	// The current term, cache of StableStore
+	// 当前任期编号
 	currentTerm uint64
 
 	// Highest committed log entry
+	// 最大被提交的日志项的索引值，用于和其他节点进行比对
 	commitIndex uint64
 
 	// Last applied log to the FSM
+	// 最新被应用到状态机的日志项的索引值
 	lastApplied uint64
 
 	// protects 4 next fields
 	lastLock sync.Mutex
 
 	// Cache the latest snapshot index/term
+	// 存储中最新的日志项的索引值和任期编号
 	lastSnapshotIndex uint64
 	lastSnapshotTerm  uint64
 

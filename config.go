@@ -212,8 +212,8 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		ProtocolVersion:    ProtocolVersionMax,
-		HeartbeatTimeout:   1000 * time.Millisecond,
-		ElectionTimeout:    1000 * time.Millisecond,
+		HeartbeatTimeout:   1000 * time.Millisecond,  // leader 心跳最大超时时间 1s
+		ElectionTimeout:    1000 * time.Millisecond,  // 选举超时时间
 		CommitTimeout:      50 * time.Millisecond,
 		MaxAppendEntries:   64,
 		ShutdownOnRemove:   true,
@@ -221,7 +221,7 @@ func DefaultConfig() *Config {
 		SnapshotInterval:   120 * time.Second,
 		SnapshotThreshold:  8192,
 		LeaderLeaseTimeout: 500 * time.Millisecond,
-		LogLevel:           "DEBUG",
+		LogLevel:           "DEBUG",  // 日志等级，生产环境中应调整
 	}
 }
 

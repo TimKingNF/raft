@@ -22,11 +22,11 @@ type TCPStreamLayer struct {
 // NewTCPTransport returns a NetworkTransport that is built on top of
 // a TCP streaming transport layer.
 func NewTCPTransport(
-	bindAddr string,
+	bindAddr string,  // 要绑定的地址信息
 	advertise net.Addr,
-	maxPool int,
-	timeout time.Duration,
-	logOutput io.Writer,
+	maxPool int,  // 连接池大小
+	timeout time.Duration,  // 超时时间
+	logOutput io.Writer,  // 日志输出方式
 ) (*NetworkTransport, error) {
 	return newTCPTransport(bindAddr, advertise, func(stream StreamLayer) *NetworkTransport {
 		return NewNetworkTransport(stream, maxPool, timeout, logOutput)
